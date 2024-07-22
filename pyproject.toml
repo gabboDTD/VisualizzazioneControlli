@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "visualizzazionecontrolli"
+version = "0.1.0"
+description = "Codice per la visualizzazione dei controlli formali"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2.2"
+streamlit = "^1.36.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
