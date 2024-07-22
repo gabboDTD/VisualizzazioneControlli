@@ -1,6 +1,10 @@
 
 # VisualizzazioneControlli
 
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![Poetry](https://img.shields.io/badge/Poetry-1.1.12+-green.svg)
+
 ## Descrizione del Progetto
 Le verifiche dell'unità di missione richiedono un grande sforzo da parte del personale a causa dei numerosi soggetti coinvolti e della documentazione prodotta, che risulta essere molto varia e contenente errori.
 
