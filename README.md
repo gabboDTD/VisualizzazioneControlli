@@ -29,10 +29,12 @@ L'obiettivo del progetto è sviluppare l'interfaccia utilizzata per effettuare i
    cd my_project
 
 2. Installa le dipendenze utilizzando Poetry:
-poetry install
+   ```bash
+   poetry install
 
 3. Utilizzo
 Per avviare l'interfaccia di controllo automatico dei documenti, eseguire:
-poetry run python main.py
+   ```bash
+   poetry run python main.py
 
 
