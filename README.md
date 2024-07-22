@@ -1,3 +1,4 @@
+
 # VisualizzazioneControlli
 
 ## Descrizione del Progetto
@@ -25,16 +26,23 @@ L'obiettivo del progetto è sviluppare l'interfaccia utilizzata per effettuare i
 ## Installazione
 1. Clona il repository:
    ```bash
-   git clone <URL-del-repository>
-   cd my_project
+   git clone https://github.com/gabboDTD/VisualizzazioneControlli.git
+   cd VisualizzazioneControlli
+   ```
 
 2. Installa le dipendenze utilizzando Poetry:
    ```bash
    poetry install
+   ```
 
-3. Utilizzo
+3. Attivazione del virtual environment:
+   ```bash
+   poetry shell
+   ```
+
+## Utilizzo
 Per avviare l'interfaccia di controllo automatico dei documenti, eseguire:
    ```bash
-   poetry run python main.py
-
+   streamlit run main.py
+   ```
 
