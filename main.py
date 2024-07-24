@@ -115,6 +115,12 @@ ogni colonna e' un documento da controllare, e ogni cella contiene un colore che
 se manca il documento (rosso), o se il documento continene errori (arancione)
 """)
 
+# Check if the Excel file exists and remove rows from df that are in existing_data
+if os.path.exists(excel_file_path):
+    existing_data = pd.read_excel(excel_file_path, header=None)
+    existing_indices = existing_data[0].tolist()
+    df = df.drop(existing_indices, errors='ignore')
+
 # Add search boxes to find the specific candidatura and column
 candidatura_search = st.text_input('Cerca il nome della candidatura')
 column_search = st.selectbox('Seleziona il nome del documento', df.columns)
@@ -155,6 +161,10 @@ if candidatura_search and column_search:
         st.write(f"Nessun documento trovato con il nome '{column_search}'")
 else:
     st.write("Inserisci il nome della candidatura e del documento per visualizzare la riga corrispondente.")
+
+# Button to rerun the script
+if st.button('Rerun'):
+    st.experimental_rerun()
 
 # Display the full dataframe
 st.write("Tabella completa:")
