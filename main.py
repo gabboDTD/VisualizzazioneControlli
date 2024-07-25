@@ -69,7 +69,7 @@ def generate_specific_data_checklist():
                 'CND_141SCU0622X_032775']
     
     data = [
-        ['Codice corretto',     'Firma presente',       'Dati corretti,',           'Compilazione corretta',    'Positivo',],
+        ['Codice corretto',     'Firma presente',       'Dati corretti',           'Compilazione corretta',    'Positivo',],
         ['Codice errato',       'Firma assente',        'Dati non corrispondenti',  'Compilazione corretta',    'Positivo',],
         ['Documento assente',   'Documento assente',    'Documento assente',        'Documento assente',        'Documento assente',],
         ['Codice corretto',     'Firma presente',       'Dati corretti,',           'Compilazione corretta',    'Positivo',],
@@ -85,10 +85,6 @@ def generate_specific_data_checklist():
     df = pd.DataFrame(data, index=indices[0:len(data)], columns=columns)
     return df
 
- 
-
-
-
 # Function to color the cells
 def color_cells(val):
     color = 'white'
@@ -98,6 +94,8 @@ def color_cells(val):
         color = 'lightgreen'
     elif val in ['Documento errato', 'Codice errato', 'Verifica manuale', 'Dati non corrispondenti', 'Compilazione errata', 'Negativo',]:
         color = 'orange'
+    elif val in ['Errore nel controllo']:
+        color = 'yellow'
     elif val in ['Documento assente', 'Codice assente', 'Firma assente', 'Campo nullo']:
         color = 'red'
     return f'background-color: {color}'
