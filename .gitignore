@@ -1,6 +1,7 @@
 # Temporary files
 sample_index.xlsx
 candidature_lavorate.xlsx
+deprecated/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
