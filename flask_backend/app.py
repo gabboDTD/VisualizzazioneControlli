@@ -1,9 +1,15 @@
-from flask import Flask, jsonify
+import os
 import pandas as pd
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
-# Define the function to generate the data
 def determine_stato_checklist(row):
     if row['Stato_Firma_Asseveratore'] == 'Documento non presente':
         return 'Documento non presente'
@@ -33,11 +39,22 @@ def validate_df_columns_and_values(df, possible_values):
     
     return True, "All columns and values are valid."
 
+def load_data():
+    try:
+        parquet_path = os.getenv('PARQUET_PATH')
+        excel_path = os.getenv('EXCEL_PATH')
+        candidature_checklist = pd.read_parquet(parquet_path)
+        file_status_report = pd.read_excel(excel_path)
+        return candidature_checklist, file_status_report
+    except Exception as e:
+        app.logger.error(f"Error loading data: {e}")
+        return None, None
+
 def generate_data():
-    # Update file paths as needed
-    candidature_checklist = pd.read_parquet('/Users/gabbo/Code/Work/GitHub/pdnd-dtd-pad26-pdf/data/20240805_candidature_checklist.parquet')
-    file_status_report = pd.read_excel('/Users/gabbo/Code/Work/GitHub/pdnd-dtd-pad26-pdf/code/log/20240805_file_status_report_all.xlsx')
-    # Ensure indices are aligned properly before assigning values
+    candidature_checklist, file_status_report = load_data()
+    if candidature_checklist is None or file_status_report is None:
+        return None, None
+
     file_status_report.set_index('Candidatura', inplace=True)
 
     possible_values_documenti = {
@@ -50,7 +67,7 @@ def generate_data():
         "Stato_Certificato_Regolare_Esec":                      ["Documento valido", "Documento non presente", "Documento errato", "Documento non supportato", "Errori nei controlli"], 
         "Stato_Allegato_5":                                     ["Documento valido", "Documento non presente", "Documento errato", "Documento non supportato", "Errori nei controlli"], 
     }
-    
+
     columns_documenti = list(possible_values_documenti.keys())
 
     possible_values_checklist = {
@@ -81,16 +98,18 @@ def generate_data():
             df[column] = "Documento non supportato"
 
     is_valid, message = validate_df_columns_and_values(df_checklist, possible_values_checklist)
-    print(message)
+    app.logger.info(message)
 
     is_valid, message = validate_df_columns_and_values(df, possible_values_documenti)
-    print(message)
+    app.logger.info(message)
 
     return df, df_checklist
 
 @app.route('/api/data', methods=['GET'])
 def get_data():
     df, df_checklist = generate_data()
+    if df is None or df_checklist is None:
+        return jsonify({'error': 'Data generation failed'}), 500
     return jsonify({'df': df.to_dict(), 'df_checklist': df_checklist.to_dict()})
 
 if __name__ == '__main__':

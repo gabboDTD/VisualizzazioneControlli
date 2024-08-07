@@ -1,10 +1,14 @@
+import os
 import yaml
 import streamlit as st
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
-from streamlit_authenticator.utilities import (CredentialsError, ForgotError, Hasher, LoginError, RegisterError, ResetError, UpdateError)
 import requests
 import pandas as pd
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 def color_cells(val):
     color = 'white'
@@ -21,7 +25,8 @@ def color_cells(val):
     return f'background-color: {color}'
 
 # Load config file
-with open('config.yaml', 'r', encoding='utf-8') as file:
+config_path = os.getenv('CONFIG_PATH', 'config.yaml')
+with open(config_path, 'r', encoding='utf-8') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
 # Create the authenticator object
@@ -36,7 +41,7 @@ authenticator = stauth.Authenticate(
 # Create a login widget
 try:
     authenticator.login()
-except LoginError as e:
+except stauth.LoginError as e:
     st.error(e)
 
 if st.session_state["authentication_status"]:
@@ -45,7 +50,8 @@ if st.session_state["authentication_status"]:
 
     @st.cache_data
     def fetch_data():
-        response = requests.get('http://127.0.0.1:5000/api/data')
+        api_url = os.getenv('API_URL')
+        response = requests.get(api_url)
         if response.status_code == 200:
             data = response.json()
             df = pd.DataFrame.from_dict(data['df'])
@@ -92,5 +98,5 @@ elif st.session_state["authentication_status"] is None:
     st.warning('Please enter your username and password')
 
 # Saving config file
-with open('config.yaml', 'w', encoding='utf-8') as file:
+with open(config_path, 'w', encoding='utf-8') as file:
     yaml.dump(config, file, default_flow_style=False)
