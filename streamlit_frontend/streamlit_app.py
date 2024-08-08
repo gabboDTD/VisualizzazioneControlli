@@ -50,7 +50,7 @@ if st.session_state["authentication_status"]:
 
     @st.cache_data
     def fetch_data():
-        api_url = os.getenv('API_URL')
+        api_url = os.getenv('API_URL')+'data'
         response = requests.get(api_url)
         if response.status_code == 200:
             data = response.json()
