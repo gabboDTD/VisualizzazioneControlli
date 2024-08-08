@@ -72,11 +72,11 @@ def load_candidature():
         with open(candidature_path, 'r') as json_file:
             query_result = json.load(json_file)
 
-        app.logger.info(f"Loaded data: {query_result}")
+        # app.logger.info(f"Loaded data: {query_result}")
         # Extract candidatureIds
         candidature_ids = [doc['candidatureId'] for doc in query_result]
 
-        app.logger.info(f"Extracted candidature_ids: {candidature_ids}")
+        # app.logger.info(f"Extracted candidature_ids: {candidature_ids}")
 
         return candidature_ids
 
@@ -93,7 +93,7 @@ def load_candidatura():
         with open(candidatura_path, 'r') as json_file:
             query_result = json.load(json_file)
 
-        app.logger.info(f"Loaded data: {query_result}")
+        # app.logger.info(f"Loaded data: {query_result}")
 
         return query_result
 

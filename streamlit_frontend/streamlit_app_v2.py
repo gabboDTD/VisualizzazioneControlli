@@ -48,49 +48,51 @@ def fetch_data2(id_candidatura):
         # Extract the query data
         query_data = data['query']
 
-        # Extract relevant information for the DataFrame
-        records = []
-        for entry in query_data:
-            records.append({
-                'documentClass': entry['documentClass'],
-                'candidatureId': entry['candidatureId'],
-                'esitoCheckReason': entry['esitoCheckReason']
-            })
-
-        # Create a DataFrame
-        df_documents = pd.DataFrame(records)
-
-        # Set 'documentClass' as the index
-        df_documents.set_index('documentClass', inplace=True)
-
-        # Select only the 'candidatureId' and 'esitoCheckReason' columns
-        df_documents = df_documents[['esitoCheckReason']]
-
-        # Find the document with documentClass "Stato_Checklist_Asseverazione"
-        checklist_document = next(doc for doc in query_data if doc['documentClass'] == "Stato_Checklist_Asseverazione")
-
-        # Extract relevant information for the DataFrame
-        records = []
-        for check in checklist_document['dettaglioCheck']:
-            records.append({
-                'nomeCheck': check['nomeCheck'],
-                'candidatureId': checklist_document['candidatureId'],
-                'Descrizione': check['Descrizione']
-            })
-
-        # Create a DataFrame
-        df_checklist = pd.DataFrame(records)
-
-        # Set 'nomeCheck' as the index
-        df_checklist.set_index('nomeCheck', inplace=True)
-
-        # Select only the 'candidatureId' and 'Descrizione' columns
-        df_checklist = df_checklist[['Descrizione']]
-
-        return df_documents, df_checklist
+        return query_data
     else:
         st.error('Failed to fetch data from backend')
-        return None, None
+        return None
+
+def prepro(query_data):
+    # Extract relevant information for the DataFrame
+    records = []
+    for entry in query_data:
+        records.append({
+            'documentClass': entry['documentClass'],
+            'candidatureId': entry['candidatureId'],
+            'esitoCheckReason': entry['esitoCheckReason']
+        })
+
+    # Create a DataFrame
+    df_documents = pd.DataFrame(records)
+
+    # Set 'documentClass' as the index
+    df_documents.set_index('documentClass', inplace=True)
+
+    # Select only the 'candidatureId' and 'esitoCheckReason' columns
+    df_documents = df_documents[['esitoCheckReason']]
+
+    # Find the document with documentClass "Stato_Checklist_Asseverazione"
+    checklist_document = next(doc for doc in query_data if doc['documentClass'] == "Stato_Checklist_Asseverazione")
+
+    # Extract relevant information for the DataFrame
+    records = []
+    for check in checklist_document['dettaglioCheck']:
+        records.append({
+            'nomeCheck': check['nomeCheck'],
+            'candidatureId': checklist_document['candidatureId'],
+            'Descrizione': check['Descrizione']
+        })
+
+    # Create a DataFrame
+    df_checklist = pd.DataFrame(records)
+
+    # Set 'nomeCheck' as the index
+    df_checklist.set_index('nomeCheck', inplace=True)
+
+    # Select only the 'candidatureId' and 'Descrizione' columns
+    df_checklist = df_checklist[['Descrizione']]
+    return df_documents, df_checklist
 
 # Load config file
 config_path = os.getenv('CONFIG_PATH', 'config.yaml')
@@ -133,7 +135,11 @@ if st.session_state["authentication_status"]:
         if selected_candidatura:
             if selected_candidatura in candidatura_options:
                 st.write(f"Dettagli per la candidatura '{selected_candidatura}':")
-                df_documents, df_checklist = fetch_data2(selected_candidatura)
+                query_data = fetch_data2(selected_candidatura)
+
+                ### preprocessing 
+                df_documents, df_checklist = prepro(query_data)
+
                 st.dataframe(df_documents.style.applymap(color_cells))
                 document_options = df_documents.index.tolist()
                 selected_document = st.sidebar.selectbox('Seleziona il documento', [''] + document_options)
