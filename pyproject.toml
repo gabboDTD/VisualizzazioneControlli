@@ -24,6 +24,7 @@ watchdog = "^4.0.1"
 flask = "^3.0.3"
 flask-cors = "^4.0.1"
 python-dotenv = "^1.0.1"
+pymongo = "^4.8.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
