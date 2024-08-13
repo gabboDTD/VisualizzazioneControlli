@@ -163,10 +163,14 @@ def read_p7m(file_path):
 def read_pdf(file_bytes):
     return base64.b64encode(file_bytes).decode('utf-8')
 
+@st.cache_resource
+def load_config():
+    config_path = os.getenv(CONFIG_PATH_KEY, 'config.yaml')
+    with open(config_path, 'r', encoding='utf-8') as file:
+        return yaml.load(file, Loader=SafeLoader)
+
 # Load config file
-config_path = os.getenv(CONFIG_PATH_KEY, 'config.yaml')
-with open(config_path, 'r', encoding='utf-8') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+config = load_config()
 
 # Create the authenticator object
 authenticator = stauth.Authenticate(
