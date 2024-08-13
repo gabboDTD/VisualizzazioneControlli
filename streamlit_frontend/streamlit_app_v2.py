@@ -103,47 +103,33 @@ def visualize_document(paths3):
         st.error("Failed to fetch document from API")
 
 def prepro(query_data):
-    # Extract relevant information for the DataFrame
-    records = []
-    for entry in query_data:
-        records.append({
+    df_documents = pd.DataFrame([
+        {
             'documentClass': entry['documentClass'],
             'candidatureId': entry['candidatureId'],
             'esitoCheckReason': entry['esitoCheckReason'],
             'documentName': entry['documentName'],
             'documentPathS3': entry['documentPathS3']
-        })
+        }
+        for entry in query_data
+    ]).set_index('documentClass')[['esitoCheckReason', 'documentName', 'documentPathS3']]
 
-    # Create a DataFrame
-    df_documents = pd.DataFrame(records)
+    checklist_document = next(
+        (doc for doc in query_data if doc['documentClass'] == "Stato_Checklist_Asseverazione"), None
+    )
 
-    # Set 'documentClass' as the index
-    df_documents.set_index('documentClass', inplace=True)
+    if not checklist_document:
+        st.warning("Checklist document not found.")
+        return df_documents, pd.DataFrame()
 
-    # Select only the necessary columns
-    df_documents = df_documents[['esitoCheckReason','documentName','documentPathS3']]
-
-    # Find the document with documentClass "Stato_Checklist_Asseverazione"
-    checklist_document = next(doc for doc in query_data if doc['documentClass'] == "Stato_Checklist_Asseverazione")
-
-    # if checklist_document 
-    # Extract relevant information for the DataFrame
-    records = []
-    for check in checklist_document['dettaglioCheck']:
-        records.append({
+    df_checklist = pd.DataFrame([
+        {
             'nomeCheck': check['nomeCheck'],
-            'candidatureId': checklist_document['candidatureId'],
             'Descrizione': check['Descrizione']
-        })
+        }
+        for check in checklist_document['dettaglioCheck']
+    ]).set_index('nomeCheck')[['Descrizione']]
 
-    # Create a DataFrame
-    df_checklist = pd.DataFrame(records)
-
-    # Set 'nomeCheck' as the index
-    df_checklist.set_index('nomeCheck', inplace=True)
-
-    # Select only the 'candidatureId' and 'Descrizione' columns
-    df_checklist = df_checklist[['Descrizione']]
     return df_documents, df_checklist
 
 # Function to read and decrypt p7m file
@@ -162,6 +148,11 @@ def read_p7m(file_path):
 # Function to read a PDF file from bytes and convert it to base64
 def read_pdf(file_bytes):
     return base64.b64encode(file_bytes).decode('utf-8')
+
+def save_config():
+    config_path = os.getenv(CONFIG_PATH_KEY, 'config.yaml')
+    with open(config_path, 'w', encoding='utf-8') as file:
+        yaml.dump(config, file, default_flow_style=False)
 
 @st.cache_resource
 def load_config():
@@ -242,5 +233,4 @@ else:
                 st.warning("Candidatura non trovata")
 
 # Saving config file
-with open(config_path, 'w', encoding='utf-8') as file:
-    yaml.dump(config, file, default_flow_style=False)
+save_config()
