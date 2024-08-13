@@ -11,24 +11,45 @@ import streamlit_authenticator as stauth
 # Load environment variables from .env file
 load_dotenv()
 
+BLUE = 'blue'
+LIGHT_GREEN = 'lightgreen'
+ORANGE = 'orange'
+YELLOW = 'yellow'
+RED = 'red'
+
+API_URL_KEY = 'API_URL'
+CONFIG_PATH_KEY = 'CONFIG_PATH'
 
 def color_cells(val):
-    color = 'white'
-    if val in ['Documento non supportato', 'Controllo non supportato']:
-        color = 'blue'
-    elif val in ['Documento valido', 'Codice corretto', 'Firma presente', 'Documento p7m', 'Dati corretti', 'Compilazione corretta', 'Positivo']:
-        color = 'lightgreen'
-    elif val in ['Documento errato', 'Codice errato', 'Verifica manuale', 'Dati non corrispondenti', 'Compilazione errata', 'Negativo']:
-        color = 'orange'
-    elif val in ['Errore nel controllo', 'Errori nei controlli', 'EOF marker not found']:
-        color = 'yellow'
-    elif val in ['Documento non presente', 'Codice assente', 'Firma assente', 'Campo nullo']:
-        color = 'red'
-    return f'background-color: {color}'
+    color_mapping = {
+        'Documento non supportato': BLUE,
+        'Controllo non supportato': BLUE,
+        'Documento valido': LIGHT_GREEN,
+        'Codice corretto': LIGHT_GREEN,
+        'Firma presente': LIGHT_GREEN,
+        'Documento p7m': LIGHT_GREEN,
+        'Dati corretti': LIGHT_GREEN,
+        'Compilazione corretta': LIGHT_GREEN,
+        'Positivo': LIGHT_GREEN,
+        'Documento errato': ORANGE,
+        'Codice errato': ORANGE,
+        'Verifica manuale': ORANGE,
+        'Dati non corrispondenti': ORANGE,
+        'Compilazione errata': ORANGE,
+        'Negativo': ORANGE,
+        'Errore nel controllo': YELLOW,
+        'Errori nei controlli': YELLOW,
+        'EOF marker not found': YELLOW,
+        'Codice assente': RED,
+        'Firma assente': RED,
+        'Campo nullo': RED,
+        'Documento non presente': RED,
+    }
+    return f'background-color: {color_mapping.get(val, "white")}'
 
 @st.cache_data(ttl=3600)
 def fetch_documents(path):
-    api_url = os.getenv('API_URL') + 'document/' + path
+    api_url = os.getenv(API_URL_KEY) + 'document/' + path
     response = requests.get(api_url)
     if response.status_code == 200:
         data = response.json()
@@ -39,7 +60,7 @@ def fetch_documents(path):
 
 @st.cache_data(ttl=3600)  # Set Time to live
 def fetch_data():
-    api_url = os.getenv('API_URL')+'data'
+    api_url = os.getenv(API_URL_KEY)+'data'
     response = requests.get(api_url)
     if response.status_code == 200:
         data = response.json()
@@ -53,7 +74,7 @@ def fetch_data():
 
 @st.cache_data(ttl=3600)  # Set time to live
 def fetch_data2(id_candidatura):
-    api_url = os.getenv('API_URL')+'detail/'+id_candidatura
+    api_url = os.getenv(API_URL_KEY)+'detail/'+id_candidatura
     response = requests.get(api_url)
     if response.status_code == 200:
 
@@ -140,7 +161,7 @@ def read_pdf(file_bytes):
     return base64.b64encode(file_bytes).decode('utf-8')
 
 # Load config file
-config_path = os.getenv('CONFIG_PATH', 'config.yaml')
+config_path = os.getenv(CONFIG_PATH_KEY, 'config.yaml')
 with open(config_path, 'r', encoding='utf-8') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
