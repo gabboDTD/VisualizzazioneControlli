@@ -183,7 +183,13 @@ try:
 except stauth.LoginError as e:
     st.error(e)
 
-if st.session_state["authentication_status"]:
+if st.session_state.get("authentication_status") is None:
+    st.warning('Please enter your username and password')
+elif not st.session_state["authentication_status"]:
+    st.error('Username/password is incorrect')
+else:
+    # User is authenticated
+
     # Logout button in the sidebar
     authenticator.logout("Logout", "sidebar")
     st.sidebar.title("Welcome, {}".format(st.session_state["name"]))
@@ -230,11 +236,6 @@ if st.session_state["authentication_status"]:
                         st.write(f"### Documento non ancora supportato")
             else:
                 st.warning("Candidatura non trovata")
-
-elif st.session_state["authentication_status"] is False:
-    st.error('Username/password is incorrect')
-elif st.session_state["authentication_status"] is None:
-    st.warning('Please enter your username and password')
 
 # Saving config file
 with open(config_path, 'w', encoding='utf-8') as file:
