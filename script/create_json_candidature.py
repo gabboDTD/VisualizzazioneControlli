@@ -43,6 +43,8 @@ json_output = []
 for idx, row in candidature_checklist.iterrows():
     
     stato, reason = determine_stato_checklist(row)
+    titolo = row.get("Titolo documento", "")
+    paths3 = row.get("File Path S3", "")
 
     json_output.append({
         "candidatureId": row["Candidatura"],
@@ -79,7 +81,8 @@ for idx, row in candidature_checklist.iterrows():
                 "Descrizione": row["Esito"]
             }
         ],
-        "documentName": "",
+        "documentName": titolo,
+        "documentPathS3": paths3,
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -94,6 +97,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -108,6 +112,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -122,6 +127,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",        
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -136,6 +142,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",        
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -150,6 +157,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",        
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -164,6 +172,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",        
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
@@ -178,6 +187,7 @@ for idx, row in candidature_checklist.iterrows():
         "esitoCheckReason": "Documento non supportato",
         "dettaglioCheck": [],
         "documentName": "",
+        "documentPathS3": "",        
         "userFeedback": "",
         "lastmodifyUsers": ""
     })
