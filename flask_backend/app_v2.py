@@ -2,11 +2,13 @@ import os
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from dotenv import load_dotenv
 from pymongo import MongoClient
 from config import Config
 from db import get_db, close_db
 import json
+import boto3
+import base64
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 def create_app():
     app = Flask(__name__)
@@ -156,8 +158,6 @@ def generate_data():
 
     return df, df_checklist
 
-# Load environment variables from .env file
-load_dotenv()
 app = create_app()
 CORS(app)  # Enable CORS for all routes
 
@@ -186,6 +186,40 @@ def get_detail(id_candidatura):
 #     df_candidatura = df.loc[id_candidatura,:]
 #     df_candidatura_checklist = df_checklist.loc[id_candidatura,:]
 #     return jsonify({'df': df_candidatura.to_dict(), 'df_checklist': df_checklist.to_dict()})
+
+@app.route('/api/document/<path:path>', methods=['GET'])
+def get_document(path):
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.getenv('AWS_REGION', 'eu-central-1')
+    bucket_name = 'pdnd-prod-dl-1'
+    
+    # Construct the full file key path
+    file_key = f'data/mid-dtd/pad26/candidature-docs/{path}'
+
+    app.logger.info(f"Requesting document from S3 with path: {file_key}")
+
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=aws_region
+    )
+
+    try:
+        response = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+        file_bytes = response['Body'].read()
+        base64_pdf = base64.b64encode(file_bytes).decode('utf-8')
+        return jsonify({"file_content_base64": base64_pdf})
+    except s3_client.exceptions.NoSuchKey:
+        app.logger.error(f"No such key: {file_key}")
+        return jsonify({"error": f"No such key: {file_key}"}), 404
+    except (NoCredentialsError, PartialCredentialsError):
+        app.logger.error("Credentials not available")
+        return jsonify({"error": "Credentials not available"}), 403
+    except Exception as e:
+        app.logger.error(f"Error fetching document: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
