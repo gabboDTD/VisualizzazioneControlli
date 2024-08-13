@@ -1,12 +1,12 @@
 import os
-import yaml
-import streamlit as st
-from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
+import base64
 import requests
 import pandas as pd
+import yaml
+from yaml.loader import SafeLoader
 from dotenv import load_dotenv
-import base64
+import streamlit as st
+import streamlit_authenticator as stauth
 
 # Load environment variables from .env file
 load_dotenv()
