@@ -47,45 +47,48 @@ def color_cells(val):
     }
     return f'background-color: {color_mapping.get(val, "white")}'
 
+def get_api_url(endpoint):
+    base_url = os.getenv(API_URL_KEY)
+    return f"{base_url}{endpoint}"
+
 @st.cache_data(ttl=3600)
 def fetch_documents(path):
-    api_url = os.getenv(API_URL_KEY) + 'document/' + path
+    api_url = get_api_url(f'document/{path}')
     response = requests.get(api_url)
-    if response.status_code == 200:
+    try:
+        response.raise_for_status()
         data = response.json()
         return data.get("file_content_base64")
-    else:
+    except requests.exceptions.HTTPError:
         st.error('Failed to fetch document from backend')
         return None
 
 @st.cache_data(ttl=3600)  # Set Time to live
 def fetch_data():
-    api_url = os.getenv(API_URL_KEY)+'data'
+    api_url = get_api_url(f'data')
     response = requests.get(api_url)
-    if response.status_code == 200:
+    try:
+        response.raise_for_status()
         data = response.json()
         # Convert the JSON data to a DataFrame
         df = pd.DataFrame(data)
         candidatura_options = df['candidature_ids'].unique()
         return candidatura_options
-    else:
-        st.error('Failed to fetch data from backend')
+    except requests.exceptions.HTTPError:
+        st.error('Failed to fetch document from backend')
         return None
 
 @st.cache_data(ttl=3600)  # Set time to live
 def fetch_data2(id_candidatura):
-    api_url = os.getenv(API_URL_KEY)+'detail/'+id_candidatura
+    api_url = get_api_url(f'detail/{id_candidatura}')
     response = requests.get(api_url)
-    if response.status_code == 200:
-
+    try:
+        response.raise_for_status()
         data = response.json()
-
-        # Extract the query data
         query_data = data['query']
-
         return query_data
-    else:
-        st.error('Failed to fetch data from backend')
+    except requests.exceptions.HTTPError:
+        st.error('Failed to fetch document from backend')
         return None
 
 # Function to visualize the document
