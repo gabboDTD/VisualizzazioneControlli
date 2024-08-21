@@ -1,2 +1,17 @@
+import os
+
 class Config:
-    MONGO_URI = 'mongodb://your_mongodb_uri/your_database_name'
+    MONGO_URI = os.getenv('MONGO_URI')
+    DATABASE_NAME = os.getenv('DATABASE_NAME')
+    COLLECTION_CANDIDATURA = os.getenv('COLLECTION_CANDIDATURA')
+    COLLECTION_DOCUMENTO = os.getenv('COLLECTION_DOCUMENTO')
+
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_REGION = os.getenv('AWS_REGION', 'eu-central-1')
+
+    PARQUET_PATH = os.getenv('PARQUET_PATH')
+    EXCEL_PATH = os.getenv('EXCEL_PATH')
+
+    CANDIDATURE_PATH = os.getenv('CANDIDATURE_PATH')
+    CANDIDATURA_PATH = os.getenv('CANDIDATURA_PATH')

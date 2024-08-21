@@ -129,8 +129,8 @@ def load_data():
         tuple: Two pandas DataFrames if loading is successful, else (None, None).
     """       
     try:
-        parquet_path = os.getenv('PARQUET_PATH')
-        excel_path = os.getenv('EXCEL_PATH')
+        parquet_path = app.config['PARQUET_PATH']
+        excel_path = app.config['EXCEL_PATH']
 
         if not parquet_path or not excel_path:
             raise ValueError("PARQUET_PATH or EXCEL_PATH environment variables not set.")
@@ -156,7 +156,7 @@ def load_json_file(file_path_env):
         dict: The loaded JSON data, or None if an error occurs.
     """       
     try:
-        file_path = os.getenv(file_path_env)
+        file_path = app.config[file_path_env]
 
         if not file_path:
             raise ValueError(f"{file_path_env} environment variable not set.")
@@ -209,9 +209,9 @@ def load_candidature():
     """        
     try:
         # Connect to MongoDB
-        client = MongoClient(os.getenv('MONGO_URI'))
-        db = client[os.getenv('DATABASE_NAME')]
-        collection = db[os.getenv('COLLECTION_CANDIDATURA')]
+        client = MongoClient(app.config['MONGO_URI'])
+        db = client[app.config['DATABASE_NAME']]        
+        collection = db[app.config['COLLECTION_CANDIDATURA']]
 
         candidature = collection.find({}, {"candidatureId": 1, "_id": 0})
         candidature_ids = [doc['candidatureId'] for doc in candidature]
@@ -235,9 +235,9 @@ def load_candidatura(id_candidatura):
     """      
     try:
         # Connect to MongoDB
-        client = MongoClient(os.getenv('MONGO_URI'))
-        db = client[os.getenv('DATABASE_NAME')]
-        collection = db[os.getenv('COLLECTION_DOCUMENTO')]
+        client = MongoClient(app.config['MONGO_URI'])
+        db = client[app.config['DATABASE_NAME']]        
+        collection = db[app.config['COLLECTION_DOCUMENTO']]
 
         # Query the collection for all documents
         query_result = list(collection.find({"candidatureId": id_candidatura}))
@@ -377,9 +377,9 @@ def get_document(path):
     Returns:
         JSON response: A JSON object containing the base64 encoded document content or an error message if the operation fails.
     """      
-    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    aws_region = os.getenv('AWS_REGION', 'eu-central-1')
+    aws_access_key_id = app.config['AWS_ACCESS_KEY_ID']
+    aws_secret_access_key = app.config['AWS_SECRET_ACCESS_KEY']
+    aws_region = app.config['AWS_REGION']
     bucket_name = 'pdnd-prod-dl-1'
     
     # Construct the full file key path
