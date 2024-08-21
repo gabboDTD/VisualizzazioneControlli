@@ -24,16 +24,19 @@ def create_app():
     return app
 
 def determine_stato_checklist(row):
-    if row['Stato_Firma_Asseveratore'] == 'Documento non presente':
+    stato_firma = row['Stato_Firma_Asseveratore']
+    esito_conformita = row['Esito_Conformità_Tecnica']
+
+    if stato_firma == 'Documento non presente':
         return 'Documento non presente'
-    elif row['Stato_Firma_Asseveratore'] in ['Firma presente', 'Documento p7m'] and row['Esito_Conformità_Tecnica'] == 'Positivo':
+    if stato_firma in ['Firma presente', 'Documento p7m'] and esito_conformita == 'Positivo':
         return 'Documento valido'
-    elif row['Stato_Firma_Asseveratore'] in ['Firma assente', 'Verifica manuale'] or row['Esito_Conformità_Tecnica'] in ['Negativo', 'Campo nullo']:
+    if stato_firma in ['Firma assente', 'Verifica manuale'] or esito_conformita in ['Negativo', 'Campo nullo']:
         return 'Documento errato'
-    elif row['Stato_Firma_Asseveratore'] in ['Errore nel controllo', 'EOF marker not found'] or row['Esito_Conformità_Tecnica'] in ['Errore nel controllo', 'EOF marker not found']:
+    if stato_firma in ['Errore nel controllo', 'EOF marker not found'] or esito_conformita in ['Errore nel controllo', 'EOF marker not found']:
         return 'Errori nei controlli'
-    else:
-        return ''
+    
+    return ''
 
 def validate_df_columns_and_values(df, possible_values):
     # Check columns
@@ -70,51 +73,43 @@ def load_data():
     try:
         parquet_path = os.getenv('PARQUET_PATH')
         excel_path = os.getenv('EXCEL_PATH')
+
+        if not parquet_path or not excel_path:
+            raise ValueError("PARQUET_PATH or EXCEL_PATH environment variables not set.")
+
         candidature_checklist = pd.read_parquet(parquet_path)
         file_status_report = pd.read_excel(excel_path)
+
         return candidature_checklist, file_status_report
     except Exception as e:
         app.logger.error(f"Error loading data: {e}")
         return None, None
 
+def load_json_file(file_path_env):
+    try:
+        file_path = os.getenv(file_path_env)
+
+        if not file_path:
+            raise ValueError(f"{file_path_env} environment variable not set.")
+
+        with open(file_path, 'r') as json_file:
+            return json.load(json_file)
+    except Exception as e:
+        app.logger.error(f"Error loading file from {file_path_env}: {e}")
+        return None
 
 def load_candidature_from_file():
-    try:
-        # Path to the JSON file
-        candidature_path = os.getenv('CANDIDATURE_PATH')
-
-        # Load the JSON file
-        with open(candidature_path, 'r') as json_file:
-            query_result = json.load(json_file)
-
-        # app.logger.info(f"Loaded data: {query_result}")
+    query_result = load_json_file('CANDIDATURE_PATH')
+    if query_result is not None:
         # Extract candidatureIds
         candidature_ids = [doc['candidatureId'] for doc in query_result]
-
-        # app.logger.info(f"Extracted candidature_ids: {candidature_ids}")
-
         return candidature_ids
-
-    except Exception as e:
-        app.logger.error(f"Error loading data: {e}")
+    else:
         return None
 
 def load_candidatura_from_file():
-    try:
-        # Path to the JSON file
-        candidatura_path = os.getenv('CANDIDATURA_PATH')
-
-        # Load the JSON file
-        with open(candidatura_path, 'r') as json_file:
-            query_result = json.load(json_file)
-
-        # app.logger.info(f"Loaded data: {query_result}")
-
-        return query_result
-
-    except Exception as e:
-        app.logger.error(f"Error loading data: {e}")
-        return None
+    query_result = load_json_file('CANDIDATURA_PATH')
+    return query_result
 
 def load_candidature():
     try:
