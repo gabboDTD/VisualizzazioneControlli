@@ -11,6 +11,8 @@ from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 from config import Config
 from db import get_db, close_db
+import numpy as np
+from bson import ObjectId
 
 def create_app():
     app = Flask(__name__)
@@ -50,6 +52,20 @@ def validate_df_columns_and_values(df, possible_values):
     
     return True, "All columns and values are valid."
 
+def convert_objectid_to_str(document):
+    """
+    Recursively convert ObjectId to string in a document (or a list of documents).
+    """
+    if isinstance(document, list):
+        return [convert_objectid_to_str(item) for item in document]
+    elif isinstance(document, dict):
+        for key, value in document.items():
+            if isinstance(value, ObjectId):
+                document[key] = str(value)
+            elif isinstance(value, (dict, list)):
+                document[key] = convert_objectid_to_str(value)
+    return document
+
 def load_data():
     try:
         parquet_path = os.getenv('PARQUET_PATH')
@@ -61,13 +77,8 @@ def load_data():
         app.logger.error(f"Error loading data: {e}")
         return None, None
 
-# def load_candidature():
-#     db = get_db()
-#     candidature = db.collection_name.find({"documentType": "Candidatura"}, {"candidatureId": 1, "_id": 0})
-#     candidature_ids = [doc['candidatureId'] for doc in candidature]
-#     return {'candidature_ids': candidature_ids}
 
-def load_candidature():
+def load_candidature_from_file():
     try:
         # Path to the JSON file
         candidature_path = os.getenv('CANDIDATURE_PATH')
@@ -88,7 +99,7 @@ def load_candidature():
         app.logger.error(f"Error loading data: {e}")
         return None
 
-def load_candidatura():
+def load_candidatura_from_file():
     try:
         # Path to the JSON file
         candidatura_path = os.getenv('CANDIDATURA_PATH')
@@ -103,6 +114,36 @@ def load_candidatura():
 
     except Exception as e:
         app.logger.error(f"Error loading data: {e}")
+        return None
+
+def load_candidature():
+    try:
+        # Connect to MongoDB
+        client = MongoClient(os.getenv('MONGO_URI'))
+        db = client[os.getenv('DATABASE_NAME')]
+        collection = db[os.getenv('COLLECTION_CANDIDATURA')]
+
+        candidature = collection.find({}, {"candidatureId": 1, "_id": 0})
+        candidature_ids = [doc['candidatureId'] for doc in candidature]
+        return candidature_ids
+
+    except Exception as e:
+        app.logger.error(f"Error loading data: {e}")
+        return None
+    
+def load_candidatura(id_candidatura):
+    try:
+        # Connect to MongoDB
+        client = MongoClient(os.getenv('MONGO_URI'))
+        db = client[os.getenv('DATABASE_NAME')]
+        collection = db[os.getenv('COLLECTION_DOCUMENTO')]
+
+        # Query the collection for all documents
+        query_result = list(collection.find({"candidatureId": id_candidatura}))
+
+        return query_result
+    except Exception as e:
+        app.logger.error(f"Error loading data from MongoDB: {e}")
         return None
 
 def generate_data():
@@ -173,12 +214,21 @@ def get_data():
 
 @app.route('/api/detail/<id_candidatura>', methods=['GET'])
 def get_detail(id_candidatura):
-    candidatura = load_candidatura()
-    if candidatura is None:
+    candidatura = load_candidatura(id_candidatura)
+
+    # Convert ObjectId to string
+    candidatura_serializable = convert_objectid_to_str(candidatura)
+
+    # Now you can pass this data to sonify or jsonify without issues
+    response = jsonify({'query': candidatura_serializable})
+    return response
+    if candidatura_serializable is None:
         return jsonify({'error': 'Data generation failed'}), 500
 
-    filtered_data = [doc for doc in candidatura if doc['candidatureId'] == id_candidatura]
-    return jsonify({'query': filtered_data})
+    # filtered_data = [doc for doc in candidatura if doc['candidatureId'] == id_candidatura]
+    # return jsonify({'query': filtered_data})
+
+    return jsonify({'query': candidatura})
 
 # @app.route('/api/detail/<id_candidatura>', methods=['GET'])
 # def get_detail(id_candidatura):
