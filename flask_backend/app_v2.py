@@ -15,15 +15,42 @@ import numpy as np
 from bson import ObjectId
 
 def create_app():
+    """
+    Create and configure the Flask application.
+
+    This function initializes the Flask application, loads the configuration from the Config object,
+    and ensures that the database connection is closed after each request.
+
+    Returns:
+        Flask: The initialized Flask application.
+    """    
     app = Flask(__name__)
     app.config.from_object(Config)
 
     @app.teardown_appcontext
     def teardown_db(exception):
+        """
+        Close the database connection after the app context ends.
+
+        Args:
+            exception (Exception): Any exception that might have occurred during the request.
+        """        
         close_db()
     return app
 
 def determine_stato_checklist(row):
+    """
+    Determine the checklist status based on document signature and technical compliance.
+
+    This function analyzes the 'Stato_Firma_Asseveratore' and 'Esito_Conformità_Tecnica' fields
+    from a dataframe row and categorizes the document into one of several status types.
+
+    Args:
+        row (pd.Series): A pandas Series object representing a row of data.
+
+    Returns:
+        str: A string representing the document's status.
+    """    
     stato_firma = row['Stato_Firma_Asseveratore']
     esito_conformita = row['Esito_Conformità_Tecnica']
 
@@ -39,6 +66,19 @@ def determine_stato_checklist(row):
     return ''
 
 def validate_df_columns_and_values(df, possible_values):
+    """
+    Validate the columns and values of a DataFrame.
+
+    This function checks if the columns of the DataFrame match the expected set of columns
+    and validates the values against a set of possible values for each column.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to validate.
+        possible_values (dict): A dictionary where keys are column names and values are lists of valid values.
+
+    Returns:
+        tuple: A tuple containing a boolean indicating success, and a string with validation details or errors.
+    """    
     # Check columns
     if set(df.columns) != set(possible_values.keys()):
         return False, f"Columns do not match. Expected {possible_values.keys()}, got {df.columns.tolist()}"
@@ -57,7 +97,16 @@ def validate_df_columns_and_values(df, possible_values):
 
 def convert_objectid_to_str(document):
     """
-    Recursively convert ObjectId to string in a document (or a list of documents).
+    Recursively convert MongoDB ObjectId fields to strings within a document.
+
+    This function converts any ObjectId fields found within a dictionary or list structure
+    to strings, which can be easier to work with in JSON or other data formats.
+
+    Args:
+        document (dict or list): The document (or list of documents) containing ObjectId fields.
+
+    Returns:
+        dict or list: The document with all ObjectId fields converted to strings.
     """
     if isinstance(document, list):
         return [convert_objectid_to_str(item) for item in document]
@@ -70,6 +119,15 @@ def convert_objectid_to_str(document):
     return document
 
 def load_data():
+    """
+    Load data from specified file paths for processing.
+
+    This function loads data from files specified in the environment variables 'PARQUET_PATH' and 'EXCEL_PATH'.
+    It returns two dataframes: one from the parquet file and another from the Excel file.
+
+    Returns:
+        tuple: Two pandas DataFrames if loading is successful, else (None, None).
+    """       
     try:
         parquet_path = os.getenv('PARQUET_PATH')
         excel_path = os.getenv('EXCEL_PATH')
@@ -86,6 +144,17 @@ def load_data():
         return None, None
 
 def load_json_file(file_path_env):
+    """
+    Load JSON data from a file specified by an environment variable.
+
+    This function loads a JSON file from the file path given by an environment variable.
+
+    Args:
+        file_path_env (str): The environment variable containing the file path.
+
+    Returns:
+        dict: The loaded JSON data, or None if an error occurs.
+    """       
     try:
         file_path = os.getenv(file_path_env)
 
@@ -99,6 +168,15 @@ def load_json_file(file_path_env):
         return None
 
 def load_candidature_from_file():
+    """
+    Load candidature IDs from a JSON file.
+
+    This function loads a list of candidature IDs from a JSON file specified by the 'CANDIDATURE_PATH'
+    environment variable.
+
+    Returns:
+        list: A list of candidature IDs, or None if loading fails.
+    """        
     query_result = load_json_file('CANDIDATURE_PATH')
     if query_result is not None:
         # Extract candidatureIds
@@ -108,10 +186,27 @@ def load_candidature_from_file():
         return None
 
 def load_candidatura_from_file():
+    """
+    Load candidature details from a JSON file.
+
+    This function loads detailed candidature data from a JSON file specified by the 'CANDIDATURA_PATH'
+    environment variable.
+
+    Returns:
+        dict: A dictionary containing the candidature details, or None if loading fails.
+    """        
     query_result = load_json_file('CANDIDATURA_PATH')
     return query_result
 
 def load_candidature():
+    """
+    Load a list of candidature IDs from the MongoDB collection.
+
+    This function connects to MongoDB and retrieves a list of candidature IDs from the specified collection.
+
+    Returns:
+        list: A list of candidature IDs, or None if an error occurs.
+    """        
     try:
         # Connect to MongoDB
         client = MongoClient(os.getenv('MONGO_URI'))
@@ -127,6 +222,17 @@ def load_candidature():
         return None
     
 def load_candidatura(id_candidatura):
+    """
+    Load detailed candidature data from the MongoDB collection.
+
+    This function connects to MongoDB and retrieves detailed candidature data for the specified candidature ID.
+
+    Args:
+        id_candidatura (str): The ID of the candidature to retrieve.
+
+    Returns:
+        list: A list of documents related to the candidature, or None if an error occurs.
+    """      
     try:
         # Connect to MongoDB
         client = MongoClient(os.getenv('MONGO_URI'))
@@ -142,6 +248,15 @@ def load_candidatura(id_candidatura):
         return None
 
 def generate_data():
+    """
+    Generate data frames for document and checklist status based on loaded data.
+
+    This function processes the loaded data to generate two dataframes: one for document statuses and one for checklist statuses.
+    The data is validated before returning the dataframes.
+
+    Returns:
+        tuple: Two pandas DataFrames containing document and checklist status, or (None, None) if generation fails.
+    """        
     candidature_checklist, file_status_report = load_data()
     if candidature_checklist is None or file_status_report is None:
         return None, None
@@ -202,6 +317,14 @@ CORS(app)  # Enable CORS for all routes
 # API to read candidature lists
 @app.route('/api/data', methods=['GET'])
 def get_data():
+    """
+    API endpoint to retrieve a list of candidature IDs.
+
+    This endpoint connects to the database, loads the candidature data, and returns a list of candidature IDs.
+
+    Returns:
+        JSON response: A JSON object containing the list of candidature IDs or an error message if the operation fails.
+    """       
     candidature_ids = load_candidature()
     if candidature_ids is None:
         return jsonify({'error': 'Data generation failed'}), 500
@@ -209,21 +332,28 @@ def get_data():
 
 @app.route('/api/detail/<id_candidatura>', methods=['GET'])
 def get_detail(id_candidatura):
+    """
+    API endpoint to retrieve detailed candidature data.
+
+    This endpoint connects to the database, retrieves detailed data for a given candidature ID, and returns it as a JSON response.
+
+    Args:
+        id_candidatura (str): The ID of the candidature to retrieve.
+
+    Returns:
+        JSON response: A JSON object containing the detailed candidature data or an error message if the operation fails.
+    """     
     candidatura = load_candidatura(id_candidatura)
 
+    if candidatura is None:
+        return jsonify({'error': 'Error loading data from MongoDB'}), 500
+    
     # Convert ObjectId to string
     candidatura_serializable = convert_objectid_to_str(candidatura)
 
     # Now you can pass this data to sonify or jsonify without issues
     response = jsonify({'query': candidatura_serializable})
     return response
-    if candidatura_serializable is None:
-        return jsonify({'error': 'Data generation failed'}), 500
-
-    # filtered_data = [doc for doc in candidatura if doc['candidatureId'] == id_candidatura]
-    # return jsonify({'query': filtered_data})
-
-    return jsonify({'query': candidatura})
 
 # @app.route('/api/detail/<id_candidatura>', methods=['GET'])
 # def get_detail(id_candidatura):
@@ -236,6 +366,17 @@ def get_detail(id_candidatura):
 
 @app.route('/api/document/<path:path>', methods=['GET'])
 def get_document(path):
+    """
+    API endpoint to retrieve a document from S3 storage.
+
+    This endpoint fetches a document from an S3 bucket based on the provided path and returns the content as a base64 encoded string.
+
+    Args:
+        path (str): The path of the document in the S3 bucket.
+
+    Returns:
+        JSON response: A JSON object containing the base64 encoded document content or an error message if the operation fails.
+    """      
     aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
     aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
     aws_region = os.getenv('AWS_REGION', 'eu-central-1')
