@@ -2,21 +2,13 @@ import os
 import base64
 import requests
 import pandas as pd
-from dotenv import load_dotenv
 import streamlit as st
 import streamlit_authenticator as stauth
 from config_manager import ConfigManager  # Import the ConfigManager class
 
-
-# Load environment variables from .env file
-load_dotenv()
-
 # Load config file
 config_manager = ConfigManager()
 config = config_manager.config
-
-API_URL_KEY = 'API_URL'
-CONFIG_PATH_KEY = 'CONFIG_PATH'
 
 COLOR_MAPPING = {
     'Documento non supportato': 'blue',
@@ -65,7 +57,10 @@ def get_api_url(endpoint):
     Returns:
         str: The full API URL.
     """    
-    base_url = os.getenv(API_URL_KEY)
+    base_url = config['api_url']
+    if not base_url:
+        st.error("API URL is not configured.")
+        return None
     return f"{base_url}{endpoint}"
 
 def fetch_from_api(endpoint):
@@ -249,10 +244,6 @@ def read_pdf(file_bytes):
         str: The base64 encoded string of the PDF file.
     """    
     return base64.b64encode(file_bytes).decode('utf-8')
-
-# Load config file
-config_manager = ConfigManager()
-config = config_manager.config
 
 # Create the authenticator object
 authenticator = stauth.Authenticate(
