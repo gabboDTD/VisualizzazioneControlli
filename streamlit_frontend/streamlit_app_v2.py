@@ -2,23 +2,46 @@ import os
 import base64
 import requests
 import pandas as pd
-import yaml
-from yaml.loader import SafeLoader
 from dotenv import load_dotenv
 import streamlit as st
 import streamlit_authenticator as stauth
+from config_manager import ConfigManager  # Import the ConfigManager class
+
 
 # Load environment variables from .env file
 load_dotenv()
 
-BLUE = 'blue'
-LIGHT_GREEN = 'lightgreen'
-ORANGE = 'orange'
-YELLOW = 'yellow'
-RED = 'red'
+# Load config file
+config_manager = ConfigManager()
+config = config_manager.config
 
 API_URL_KEY = 'API_URL'
 CONFIG_PATH_KEY = 'CONFIG_PATH'
+
+COLOR_MAPPING = {
+    'Documento non supportato': 'blue',
+    'Controllo non supportato': 'blue',
+    'Documento valido': 'lightgreen',
+    'Codice corretto': 'lightgreen',
+    'Firma presente': 'lightgreen',
+    'Documento p7m': 'lightgreen',
+    'Dati corretti': 'lightgreen',
+    'Compilazione corretta': 'lightgreen',
+    'Positivo': 'lightgreen',
+    'Documento errato': 'orange',
+    'Codice errato': 'orange',
+    'Verifica manuale': 'orange',
+    'Dati non corrispondenti': 'orange',
+    'Compilazione errata': 'orange',
+    'Negativo': 'orange',
+    'Errore nel controllo': 'yellow',
+    'Errori nei controlli': 'yellow',
+    'EOF marker not found': 'yellow',
+    'Codice assente': 'red',
+    'Firma assente': 'red',
+    'Campo nullo': 'red',
+    'Documento non presente': 'red',
+}
 
 def color_cells(val):
     """
@@ -30,31 +53,7 @@ def color_cells(val):
     Returns:
         str: The CSS style for the background color.
     """    
-    color_mapping = {
-        'Documento non supportato': BLUE,
-        'Controllo non supportato': BLUE,
-        'Documento valido': LIGHT_GREEN,
-        'Codice corretto': LIGHT_GREEN,
-        'Firma presente': LIGHT_GREEN,
-        'Documento p7m': LIGHT_GREEN,
-        'Dati corretti': LIGHT_GREEN,
-        'Compilazione corretta': LIGHT_GREEN,
-        'Positivo': LIGHT_GREEN,
-        'Documento errato': ORANGE,
-        'Codice errato': ORANGE,
-        'Verifica manuale': ORANGE,
-        'Dati non corrispondenti': ORANGE,
-        'Compilazione errata': ORANGE,
-        'Negativo': ORANGE,
-        'Errore nel controllo': YELLOW,
-        'Errori nei controlli': YELLOW,
-        'EOF marker not found': YELLOW,
-        'Codice assente': RED,
-        'Firma assente': RED,
-        'Campo nullo': RED,
-        'Documento non presente': RED,
-    }
-    return f'background-color: {color_mapping.get(val, "white")}'
+    return f'background-color: {COLOR_MAPPING.get(val, "white")}'
 
 def get_api_url(endpoint):
     """
@@ -69,6 +68,25 @@ def get_api_url(endpoint):
     base_url = os.getenv(API_URL_KEY)
     return f"{base_url}{endpoint}"
 
+def fetch_from_api(endpoint):
+    """
+    Fetch data from the API for the given endpoint.
+
+    Args:
+        endpoint (str): The API endpoint to fetch data from.
+
+    Returns:
+        dict or None: The JSON response from the API, or None if an error occurs.
+    """
+    api_url = get_api_url(endpoint)
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError:
+        st.error(f'Failed to fetch data from {endpoint}')
+        return None
+
 @st.cache_data(ttl=3600)
 def fetch_documents(path):
     """
@@ -80,17 +98,12 @@ def fetch_documents(path):
     Returns:
         str: The base64 encoded content of the document or None if an error occurs.
     """    
-    api_url = get_api_url(f'document/{path}')
-    response = requests.get(api_url)
-    try:
-        response.raise_for_status()
-        data = response.json()
+    data = fetch_from_api(f'document/{path}')
+    if data:
         return data.get("file_content_base64")
-    except requests.exceptions.HTTPError:
-        st.error('Failed to fetch document from backend')
-        return None
+    return None
 
-@st.cache_data(ttl=3600)  # Set Time to live
+@st.cache_data(ttl=3600)
 def fetch_data():
     """
     Fetch candidature data from the backend.
@@ -98,20 +111,13 @@ def fetch_data():
     Returns:
         list: A list of unique candidature IDs or None if an error occurs.
     """    
-    api_url = get_api_url(f'data')
-    response = requests.get(api_url)
-    try:
-        response.raise_for_status()
-        data = response.json()
-        # Convert the JSON data to a DataFrame
+    data = fetch_from_api('data')
+    if data:
         df = pd.DataFrame(data)
-        candidatura_options = df['candidature_ids'].unique()
-        return candidatura_options
-    except requests.exceptions.HTTPError:
-        st.error('Failed to fetch document from backend')
-        return None
+        return df['candidature_ids'].unique()
+    return None
 
-@st.cache_data(ttl=3600)  # Set time to live
+@st.cache_data(ttl=3600)
 def fetch_data2(id_candidatura):
     """
     Fetch detailed data for a specific candidature from the backend.
@@ -122,16 +128,10 @@ def fetch_data2(id_candidatura):
     Returns:
         dict: The detailed data for the candidature or None if an error occurs.
     """    
-    api_url = get_api_url(f'detail/{id_candidatura}')
-    response = requests.get(api_url)
-    try:
-        response.raise_for_status()
-        data = response.json()
-        query_data = data['query']
-        return query_data
-    except requests.exceptions.HTTPError:
-        st.error('Failed to fetch document from backend')
-        return None
+    data = fetch_from_api(f'detail/{id_candidatura}')
+    if data:
+        return data.get('query')
+    return None
 
 # Function to visualize the document
 def visualize_document(paths3):
@@ -153,17 +153,17 @@ def visualize_document(paths3):
     else:
         st.error("Failed to fetch document from API")
 
-def prepro(query_data):
+def extract_documents(query_data):
     """
-    Preprocess the query data to extract documents and checklist information.
+    Extract documents information from the query data.
 
     Args:
         query_data (list): The raw data returned from the backend query.
 
     Returns:
-        tuple: Two DataFrames, one for the documents and one for the checklist.
-    """    
-    df_documents = pd.DataFrame([
+        pd.DataFrame: DataFrame containing documents information.
+    """
+    return pd.DataFrame([
         {
             'documentClass': entry['documentClass'],
             'candidatureId': entry['candidatureId'],
@@ -174,15 +174,25 @@ def prepro(query_data):
         for entry in query_data
     ]).set_index('documentClass')[['esitoCheckReason', 'documentName', 'documentPathS3']]
 
+def extract_checklist(query_data):
+    """
+    Extract checklist information from the query data.
+
+    Args:
+        query_data (list): The raw data returned from the backend query.
+
+    Returns:
+        pd.DataFrame: DataFrame containing checklist information, or an empty DataFrame if not found.
+    """
     checklist_document = next(
         (doc for doc in query_data if doc['documentClass'] == "Stato_Checklist_Asseverazione"), None
     )
 
     if not checklist_document:
         st.warning("Checklist document not found.")
-        return df_documents, pd.DataFrame()
+        return pd.DataFrame()
 
-    df_checklist = pd.DataFrame([
+    return pd.DataFrame([
         {
             'nomeCheck': check['nomeCheck'],
             'Descrizione': check['Descrizione']
@@ -190,7 +200,20 @@ def prepro(query_data):
         for check in checklist_document['dettaglioCheck']
     ]).set_index('nomeCheck')[['Descrizione']]
 
+def prepro(query_data):
+    """
+    Preprocess the query data to extract documents and checklist information.
+
+    Args:
+        query_data (list): The raw data returned from the backend query.
+
+    Returns:
+        tuple: Two DataFrames, one for the documents and one for the checklist.
+    """
+    df_documents = extract_documents(query_data)
+    df_checklist = extract_checklist(query_data)
     return df_documents, df_checklist
+
 
 # Function to read and decrypt p7m file
 def read_p7m(file_path):
@@ -227,31 +250,9 @@ def read_pdf(file_bytes):
     """    
     return base64.b64encode(file_bytes).decode('utf-8')
 
-def save_config():
-    """
-    Save the current configuration to a YAML file.
-
-    Returns:
-        None
-    """    
-    config_path = os.getenv(CONFIG_PATH_KEY, 'config.yaml')
-    with open(config_path, 'w', encoding='utf-8') as file:
-        yaml.dump(config, file, default_flow_style=False)
-
-@st.cache_resource
-def load_config():
-    """
-    Load the configuration from a YAML file.
-
-    Returns:
-        dict: The loaded configuration.
-    """    
-    config_path = os.getenv(CONFIG_PATH_KEY, 'config.yaml')
-    with open(config_path, 'r', encoding='utf-8') as file:
-        return yaml.load(file, Loader=SafeLoader)
-
 # Load config file
-config = load_config()
+config_manager = ConfigManager()
+config = config_manager.config
 
 # Create the authenticator object
 authenticator = stauth.Authenticate(
@@ -322,5 +323,5 @@ else:
             else:
                 st.warning("Candidatura non trovata")
 
-# Saving config file
-save_config()
+# Save the updated configuration back to the file
+config_manager.save_config()
