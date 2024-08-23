@@ -5,10 +5,20 @@ import pandas as pd
 import streamlit as st
 import streamlit_authenticator as stauth
 from config_manager import ConfigManager  # Import the ConfigManager class
+from cryptography.hazmat.primitives.serialization import pkcs7
 
 # Load config file
 config_manager = ConfigManager()
 config = config_manager.config
+
+# Ensure all necessary config fields are present
+try:
+    base_url = config['api_url']
+    credentials = config['credentials']
+    cookie_config = config['cookie']
+except KeyError as e:
+    st.error(f"Missing configuration key: {e}")
+    st.stop()
 
 COLOR_MAPPING = {
     'Documento non supportato': 'blue',
@@ -74,16 +84,18 @@ def fetch_from_api(endpoint):
         dict or None: The JSON response from the API, or None if an error occurs.
     """
     api_url = get_api_url(endpoint)
+    if not api_url:
+        return None
     try:
         response = requests.get(api_url)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.HTTPError:
-        st.error(f'Failed to fetch data from {endpoint}')
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to fetch data from {endpoint}: {e}")
         return None
 
 @st.cache_data(ttl=3600)
-def fetch_documents(path):
+def fetch_documents(path: str):
     """
     Fetch the base64 encoded content of a document from the backend.
 
@@ -113,7 +125,7 @@ def fetch_data():
     return None
 
 @st.cache_data(ttl=3600)
-def fetch_data2(id_candidatura):
+def fetch_data2(id_candidatura: str):
     """
     Fetch detailed data for a specific candidature from the backend.
 
@@ -129,7 +141,7 @@ def fetch_data2(id_candidatura):
     return None
 
 # Function to visualize the document
-def visualize_document(paths3):
+def visualize_document(paths3: str):
     """
     Visualize a PDF document retrieved from the backend.
 
@@ -139,6 +151,10 @@ def visualize_document(paths3):
     Returns:
         None
     """    
+    if not paths3:
+        st.error("No valid document path provided.")
+        return
+
     base64_pdf = fetch_documents(paths3)
     if base64_pdf:
         st.success("File read successfully!")
@@ -148,7 +164,7 @@ def visualize_document(paths3):
     else:
         st.error("Failed to fetch document from API")
 
-def extract_documents(query_data):
+def extract_documents(query_data: list):
     """
     Extract documents information from the query data.
 
@@ -169,7 +185,7 @@ def extract_documents(query_data):
         for entry in query_data
     ]).set_index('documentClass')[['esitoCheckReason', 'documentName', 'documentPathS3']]
 
-def extract_checklist(query_data):
+def extract_checklist(query_data: list):
     """
     Extract checklist information from the query data.
 
@@ -195,7 +211,7 @@ def extract_checklist(query_data):
         for check in checklist_document['dettaglioCheck']
     ]).set_index('nomeCheck')[['Descrizione']]
 
-def prepro(query_data):
+def prepro(query_data: list):
     """
     Preprocess the query data to extract documents and checklist information.
 
@@ -211,7 +227,7 @@ def prepro(query_data):
 
 
 # Function to read and decrypt p7m file
-def read_p7m(file_path):
+def read_p7m(file_path: str):
     """
     Read and extract the content of a p7m file.
 
@@ -233,7 +249,7 @@ def read_p7m(file_path):
     return content
 
 # Function to read a PDF file from bytes and convert it to base64
-def read_pdf(file_bytes):
+def read_pdf(file_bytes: bytes):
     """
     Convert a PDF file from bytes to a base64 encoded string.
 
@@ -247,10 +263,10 @@ def read_pdf(file_bytes):
 
 # Create the authenticator object
 authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days'],
+    credentials,
+    cookie_config['name'],
+    cookie_config['key'],
+    cookie_config['expiry_days'],
     config['pre-authorized']
 )
 
@@ -259,11 +275,15 @@ try:
     authenticator.login()
 except stauth.LoginError as e:
     st.error(e)
+    st.stop()
 
+# Check authentication status
 if st.session_state.get("authentication_status") is None:
     st.warning('Please enter your username and password')
+    st.stop()
 elif not st.session_state["authentication_status"]:
     st.error('Username/password is incorrect')
+    st.stop()
 else:
     # User is authenticated
 
@@ -281,7 +301,13 @@ else:
         """)
 
         st.sidebar.title("Ricerca Candidature")
-        selected_candidatura = st.sidebar.text_input('Cerca il nome della candidatura')
+        selected_candidatura = st.sidebar.text_input('Cerca il nome della candidatura', key='selected_candidatura')
+
+        # Reset selected_document when selected_candidatura changes
+        if st.session_state.get('selected_document') and st.session_state['selected_candidatura'] != st.session_state.get('previous_candidatura'):
+            st.session_state['selected_document'] = ''
+        
+        st.session_state['previous_candidatura'] = st.session_state['selected_candidatura']
 
         if selected_candidatura:
             if selected_candidatura in candidatura_options:
@@ -292,25 +318,33 @@ else:
                 """)
                 query_data = fetch_data2(selected_candidatura)
 
-                ### preprocessing 
-                df_documents, df_checklist = prepro(query_data)
-                st.write("### Stato dei Documenti")
-                st.dataframe(df_documents[['esitoCheckReason']].style.applymap(color_cells))
-                document_options = df_documents.index.tolist()
-                selected_document = st.sidebar.selectbox('Seleziona il documento', [''] + document_options)
+                if query_data:
+                    ### preprocessing 
+                    df_documents, df_checklist = prepro(query_data)
+                    st.write("### Stato dei Documenti")
+                    if not df_documents.empty:
+                        st.dataframe(df_documents[['esitoCheckReason']].style.applymap(color_cells))
+                        document_options = df_documents.index.tolist()
+                        selected_document = st.sidebar.selectbox(
+                            label='Seleziona il documento', 
+                            options=[''] + document_options,
+                            key='selected_document'
+                        )
+                        if selected_document:
+                            if selected_document == 'Stato_Checklist_Asseverazione':
+                                st.write(f"### Dettagli dei Controlli per il Documento '{selected_document}':")
+                                if not df_checklist.empty:
+                                    st.dataframe(df_checklist.style.applymap(color_cells))
 
-                if selected_document:
-                    if selected_document == 'Stato_Checklist_Asseverazione':
-                        st.write(f"### Dettagli dei Controlli per il Documento '{selected_document}':")
-                        st.dataframe(df_checklist.style.applymap(color_cells))
-
-                        if st.button('Mostra documento'):
-                            # Read the file from S3 into memory
-                            paths3 = df_documents.loc['Stato_Checklist_Asseverazione','documentPathS3']
-                            visualize_document(paths3)
-
+                                if st.button('Mostra documento'):
+                                    paths3 = df_documents.loc[selected_document, 'documentPathS3']
+                                    visualize_document(paths3)
+                            else:
+                                st.write(f"### Documento non ancora supportato")
                     else:
-                        st.write(f"### Documento non ancora supportato")
+                        st.warning("No documents available.")
+                else:
+                    st.warning("No data found for the selected candidature.")
             else:
                 st.warning("Candidatura non trovata")
 
