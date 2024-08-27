@@ -111,7 +111,7 @@ def fetch_documents(path: str):
     return None
 
 @st.cache_data(ttl=3600)
-def fetch_data():
+def fetch_candidature_ids():
     """
     Fetch candidature data from the backend.
 
@@ -125,7 +125,7 @@ def fetch_data():
     return None
 
 @st.cache_data(ttl=3600)
-def fetch_data2(id_candidatura: str):
+def fetch_candidature_details(id_candidatura: str):
     """
     Fetch detailed data for a specific candidature from the backend.
 
@@ -291,7 +291,7 @@ else:
     authenticator.logout("Logout", "sidebar")
     st.sidebar.title("Welcome, {}".format(st.session_state["name"]))
 
-    candidatura_options = fetch_data()
+    candidatura_options = fetch_candidature_ids()
 
     if candidatura_options is not None:
         st.title('Matrice dei controlli formali')
@@ -316,7 +316,7 @@ else:
                 Ogni cella contiene un colore che indica se i controlli sul documento sono OK (verde chiaro), se manca il documento (rosso), 
                 se il documento contiene errori (arancione), o se il documento non è ancora supportato.
                 """)
-                query_data = fetch_data2(selected_candidatura)
+                query_data = fetch_candidature_details(selected_candidatura)
 
                 if query_data:
                     ### preprocessing 
@@ -349,4 +349,4 @@ else:
                 st.warning("Candidatura non trovata")
 
 # Save the updated configuration back to the file
-config_manager.save_config()
+# config_manager.save_config()
