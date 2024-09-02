@@ -47,6 +47,10 @@ L'obiettivo del progetto è sviluppare l'interfaccia utilizzata per effettuare i
 ## Utilizzo
 Per avviare l'interfaccia di controllo automatico dei documenti, eseguire:
    ```bash
-   streamlit run main.py
+   cd flask_backend
+   python app_v2.py
+   
+   cd streamlit_frontend
+   streamlit run streamlit_app_v2.py
    ```
 
