@@ -21,8 +21,8 @@ except KeyError as e:
     st.stop()
 
 COLOR_MAPPING = {
-    'Documento non supportato': 'blue',
-    'Controllo non supportato': 'blue',
+    'Documento non supportato': '#1E90FF',
+    'Controllo non supportato': '#1E90FF',
     'Documento valido': 'lightgreen',
     'Codice corretto': 'lightgreen',
     'Firma presente': 'lightgreen',
@@ -158,7 +158,7 @@ def visualize_document(paths3: str):
     base64_pdf = fetch_documents(paths3)
     if base64_pdf:
         st.success("File read successfully!")
-        st.write("## Selected PDF")
+        st.write("## Documento selezionato")
         pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="900" type="application/pdf"></iframe>'
         st.markdown(pdf_display, unsafe_allow_html=True)
     else:
@@ -176,14 +176,14 @@ def extract_documents(query_data: list):
     """
     return pd.DataFrame([
         {
-            'documentClass': entry['documentClass'],
+            'Documento': entry['documentClass'],
             'candidatureId': entry['candidatureId'],
-            'esitoCheckReason': entry['esitoCheckReason'],
+            'Esito controlli': entry['esitoCheckReason'],
             'documentName': entry['documentName'],
             'documentPathS3': entry['documentPathS3']
         }
         for entry in query_data
-    ]).set_index('documentClass')[['esitoCheckReason', 'documentName', 'documentPathS3']]
+    ]).set_index('Documento')[['Esito controlli', 'documentName', 'documentPathS3']]
 
 def extract_checklist(query_data: list):
     """
@@ -205,11 +205,64 @@ def extract_checklist(query_data: list):
 
     return pd.DataFrame([
         {
-            'nomeCheck': check['nomeCheck'],
-            'Descrizione': check['Descrizione']
+            'Controllo': check['nomeCheck'],
+            'Esito': check['Descrizione']
         }
         for check in checklist_document['dettaglioCheck']
-    ]).set_index('nomeCheck')[['Descrizione']]
+    ]).set_index('Controllo')[['Esito']]
+
+import pandas as pd
+
+def rename_dataframe_index(df):
+    """
+    Rename the index of a DataFrame according to a specified mapping.
+    
+    This function takes a DataFrame with specific index labels and renames those labels 
+    based on a predefined mapping. It modifies the DataFrame in place.
+
+    Parameters:
+    df (pd.DataFrame): The DataFrame whose index is to be renamed.
+
+    Returns:
+    pd.DataFrame: The DataFrame with the renamed index.    
+    """
+    index_mapping = {
+        "Stato_Checklist_Asseverazione": "Checklist di asseverazione",
+        "Stato_Contratto_SA_SR": "Contratto soggetto attuatore soggetto realizzatore",
+        "Stato_Determina_Affidamento_Aggiudicazione_Servizio": "Determina affidamento, aggiudicazione servizio",
+        "Stato_Proposta_Commerciale": "Proposta commerciale",
+        "Stato_Documento_Stipula_MEPA": "Documento stipula MEPA",
+        "Stato_Convenzione_Accordo": "Convenzione accordo",
+        "Stato_Certificato_Regolare_Esec": "Certificato regolare esecuzione",
+        "Stato_Allegato_5": "Allegato 5"
+    }
+    
+    df.rename(index=index_mapping, inplace=True)
+    return df
+
+def rename_controlli_checklist_index(df):
+    """
+    Rename the index of a DataFrame according to a specified mapping.
+    
+    This function takes a DataFrame with specific index labels and renames those labels 
+    based on a predefined mapping. It modifies the DataFrame in place.
+
+    Parameters:
+    df (pd.DataFrame): The DataFrame whose index is to be renamed.
+
+    Returns:
+    pd.DataFrame: The DataFrame with the renamed index.    
+    """
+    index_mapping = {
+        "Stato_CUP": "CUP",
+        "Stato_Firma_Asseveratore": "Firma asseveratore",
+        "Stato_Anagrafica_SA": "Anagrafica soggetto attuatore",
+        "Stato_Compilazione_Checklist": "Compilazione checklist",
+        "Esito_Conformità_Tecnica": "Esito Conformità Tecnica",
+    }
+    
+    df.rename(index=index_mapping, inplace=True)
+    return df
 
 def prepro(query_data: list):
     """
@@ -222,9 +275,11 @@ def prepro(query_data: list):
         tuple: Two DataFrames, one for the documents and one for the checklist.
     """
     df_documents = extract_documents(query_data)
-    df_checklist = extract_checklist(query_data)
-    return df_documents, df_checklist
+    df_documents = rename_dataframe_index(df_documents)
 
+    df_checklist = extract_checklist(query_data)
+    df_checklist = rename_controlli_checklist_index(df_checklist)
+    return df_documents, df_checklist
 
 # Function to read and decrypt p7m file
 def read_p7m(file_path: str):
@@ -289,7 +344,7 @@ else:
 
     # Logout button in the sidebar
     authenticator.logout("Logout", "sidebar")
-    st.sidebar.title("Welcome, {}".format(st.session_state["name"]))
+    st.sidebar.title(f"Benvenuto, {st.session_state['name']}")
 
     candidatura_options = fetch_candidature_ids()
 
@@ -297,11 +352,11 @@ else:
         st.title('Matrice dei controlli formali')
 
         st.write("""
-        Questa app consente di selezionare una candidatura e visualizzare i dettagli dei controlli formali sui documenti associati. 
+        Questa applicazione ti permette di selezionare una candidatura e visualizzare i dettagli dei controlli formali sui documenti ad essa associati. 
         """)
 
-        st.sidebar.title("Ricerca Candidature")
-        selected_candidatura = st.sidebar.text_input('Cerca il nome della candidatura', key='selected_candidatura')
+        st.sidebar.title("Cerca la candidatura")
+        selected_candidatura = st.sidebar.text_input('Inserisci il nome della candidatura', key='selected_candidatura', autocomplete='on')
 
         # Reset selected_document when selected_candidatura changes
         if st.session_state.get('selected_document') and st.session_state['selected_candidatura'] != st.session_state.get('previous_candidatura'):
@@ -311,30 +366,32 @@ else:
 
         if selected_candidatura:
             if selected_candidatura in candidatura_options:
-                st.subheader(f"Dettagli per la candidatura '{selected_candidatura}':")
-                st.write("""
-                Ogni cella contiene un colore che indica se i controlli sul documento sono OK (verde chiaro), se manca il documento (rosso), 
-                se il documento contiene errori (arancione), o se il documento non è ancora supportato.
-                """)
+                # st.subheader(f"Dettagli della candidatura {selected_candidatura}:")
+                # st.write("""
+                # Il colore di ogni cella indica lo stato del controllo del documento: verde chiaro se il controllo è positivo, rosso se il documento manca, 
+                # arancione se ci sono errori, e blu se il documento non è supportato.
+                # """)
                 query_data = fetch_candidature_details(selected_candidatura)
 
                 if query_data:
                     ### preprocessing 
                     df_documents, df_checklist = prepro(query_data)
-                    st.write("### Stato dei Documenti")
+                    st.write(f"### Stato dei controlli per i documenti della candidatura {selected_candidatura}")
                     if not df_documents.empty:
-                        st.dataframe(df_documents[['esitoCheckReason']].style.applymap(color_cells))
+                        # st.dataframe(df_documents[['Esito controlli']].style.map(color_cells).set_properties(**{'text-align': 'center'}))  # Improved text alignment
+                        st.dataframe(df_documents[['Esito controlli']].style.set_properties(**{'text-align': 'center'}))  # Improved text alignment
                         document_options = df_documents.index.tolist()
                         selected_document = st.sidebar.selectbox(
-                            label='Seleziona il documento', 
+                            label='Scegli il documento su cui effettuare i controlli', 
                             options=[''] + document_options,
                             key='selected_document'
                         )
                         if selected_document:
-                            if selected_document == 'Stato_Checklist_Asseverazione':
-                                st.write(f"### Dettagli dei Controlli per il Documento '{selected_document}':")
+                            if selected_document == 'Checklist di asseverazione':
+                                st.write(f"### Dettagli dei controlli per il documento:<br>{selected_document}", unsafe_allow_html=True)
                                 if not df_checklist.empty:
-                                    st.dataframe(df_checklist.style.applymap(color_cells))
+                                    # st.dataframe(df_checklist.style.map(color_cells).set_properties(**{'text-align': 'center'}))  # Improved text alignment
+                                    st.dataframe(df_checklist.style.set_properties(**{'text-align': 'center'}))  # Improved text alignment
 
                                 if st.button('Mostra documento'):
                                     paths3 = df_documents.loc[selected_document, 'documentPathS3']
@@ -342,9 +399,9 @@ else:
                             else:
                                 st.write(f"### Documento non ancora supportato")
                     else:
-                        st.warning("No documents available.")
+                        st.warning("Nessun documento disponibile.")
                 else:
-                    st.warning("No data found for the selected candidature.")
+                    st.warning("Nessun dato trovato per la candidatura selezionata.")
             else:
                 st.warning("Candidatura non trovata")
 
