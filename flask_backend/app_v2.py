@@ -4,6 +4,7 @@ import base64
 
 import pandas as pd
 from flask import Flask, jsonify, request
+from flask import g
 from flask_cors import CORS
 from pymongo import MongoClient
 import boto3
@@ -13,6 +14,25 @@ from config import Config
 from db import get_db, close_db
 import numpy as np
 from bson import ObjectId
+
+def get_db():
+    """
+    Opens a new database connection if there is none yet for the current application context.
+    """
+    if 'db' not in g:
+        client = MongoClient(app.config['MONGO_URI'])
+        g.db_client = client
+        g.db = client[app.config['DATABASE_NAME']]
+    return g.db
+
+def close_db(e=None):
+    """
+    Closes the database connection if it exists.
+    """
+    db_client = g.pop('db_client', None)
+
+    if db_client is not None:
+        db_client.close()
 
 def create_app():
     """
@@ -35,7 +55,7 @@ def create_app():
         Args:
             exception (Exception): Any exception that might have occurred during the request.
         """        
-        close_db()
+        close_db(exception)
     return app
 
 def determine_stato_checklist(row):
@@ -209,8 +229,7 @@ def load_candidature():
     """        
     try:
         # Connect to MongoDB
-        client = MongoClient(app.config['MONGO_URI'])
-        db = client[app.config['DATABASE_NAME']]        
+        db = get_db()
         collection = db[app.config['COLLECTION_CANDIDATURA']]
 
         candidature = collection.find({}, {"candidatureId": 1, "_id": 0})
@@ -235,8 +254,7 @@ def load_candidatura(id_candidatura):
     """      
     try:
         # Connect to MongoDB
-        client = MongoClient(app.config['MONGO_URI'])
-        db = client[app.config['DATABASE_NAME']]        
+        db = get_db()
         collection = db[app.config['COLLECTION_DOCUMENTO']]
 
         # Query the collection for all documents
