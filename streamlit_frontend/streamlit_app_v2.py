@@ -7,6 +7,73 @@ import streamlit_authenticator as stauth
 from config_manager import ConfigManager  # Import the ConfigManager class
 from cryptography.hazmat.primitives.serialization import pkcs7
 
+# Custom CSS for styling
+st.markdown(
+    """
+    <style>
+    /* Set the background color of the sidebar */
+    .css-18e3th9 {
+        background-color: #0056b3;  /* Blue background */
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;  /* Align content to the top */
+        padding-top: 20px; /* Adjust padding to align with the main content */
+    }
+    
+    /* Center logo vertically within the sidebar */
+    .logo-container {
+        padding-top: 0px;
+        padding-bottom: 20px;
+        margin-top: 0;
+    }
+    
+    /* Set the font color and style for the sidebar */
+    .css-18e3th9, .css-1d391kg, .css-1v3fvcr, .css-1l02zno {
+        color: white;  /* White text */
+        font-family: 'Helvetica', sans-serif;
+    }
+    
+    /* Set the main content background and font style */
+    .css-1outpf7 {
+        background-color: #f7f9fc;  /* Light gray background */
+        color: #0056b3;  /* Blue text */
+        font-family: 'Helvetica', sans-serif;
+        padding-top: 20px;  /* Align with the logo */
+    }
+    
+    /* Style the header */
+    .css-145kmo2 {
+        font-size: 24px;
+        font-weight: bold;
+        color: #003366;  /* Darker blue */
+        margin-top: 0; /* Remove top margin for alignment */
+        padding-top: 0px; /* Ensure it aligns with the sidebar */
+    }
+
+    /* Style the subheaders */
+    .css-1cpxqw2 {
+        color: #003366;  /* Darker blue */
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    /* Button styling */
+    .stButton button {
+        background-color: #0056b3;  /* Blue button */
+        color: white;  /* White text */
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+    }
+    
+    .stButton button:hover {
+        background-color: #003366;  /* Darker blue on hover */
+    }
+    
+    </style>
+    """, unsafe_allow_html=True
+)
+
 # Load config file
 config_manager = ConfigManager()
 config = config_manager.config
@@ -258,7 +325,7 @@ def rename_controlli_checklist_index(df):
         "Stato_Firma_Asseveratore": "Firma asseveratore",
         "Stato_Anagrafica_SA": "Anagrafica soggetto attuatore",
         "Stato_Compilazione_Checklist": "Compilazione checklist",
-        "Esito_Conformità_Tecnica": "Esito Conformità Tecnica",
+        "Esito_Conformità_Tecnica": "Esito conformità tecnica",
     }
     
     df.rename(index=index_mapping, inplace=True)
@@ -342,9 +409,19 @@ elif not st.session_state["authentication_status"]:
 else:
     # User is authenticated
 
-    # Logout button in the sidebar
-    authenticator.logout("Logout", "sidebar")
+    # Add SVG logo in the sidebar
+    st.sidebar.markdown(
+        """
+        <div class="logo-container">
+            <img src="data:image/svg+xml;base64,{encoded_svg}" />
+        </div>
+        """.format(encoded_svg=base64.b64encode(open("blue-nofill-text-bottom.svg", "rb").read()).decode("utf-8")),
+        unsafe_allow_html=True
+    )
+
+    # Sidebar title and logout button
     st.sidebar.title(f"Benvenuto, {st.session_state['name']}")
+    authenticator.logout("Logout", "sidebar")
 
     candidatura_options = fetch_candidature_ids()
 
@@ -357,7 +434,11 @@ else:
 
         st.sidebar.title("Cerca la candidatura")
         selected_candidatura = st.sidebar.text_input('Inserisci il nome della candidatura', key='selected_candidatura', autocomplete='on')
-
+        # selected_candidatura = st.sidebar.selectbox(
+        #     label='Nome candidatura', 
+        #     options=[''] + candidatura_options,
+        #     key='selected_candidatura'
+        # )
         # Reset selected_document when selected_candidatura changes
         if st.session_state.get('selected_document') and st.session_state['selected_candidatura'] != st.session_state.get('previous_candidatura'):
             st.session_state['selected_document'] = ''
